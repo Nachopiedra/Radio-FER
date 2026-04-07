@@ -82,7 +82,7 @@
             </div>
             <div class="indicador"></div>
         </button>
-		<button class="btn-emisora" data-nombre="Cadena 100" data-busqueda="cadena 100" data-pais="ES" data-freq="99.5 FM Madrid">
+        <button class="btn-emisora" data-nombre="Cadena 100" data-busqueda="cadena 100" data-pais="ES" data-freq="99.5 FM Madrid">
             <div>
                 <div class="nombre">Cadena 100</div>
                 <div class="freq">99.5 FM Madrid</div>
@@ -191,16 +191,12 @@
                 const busqueda = btn.dataset.busqueda;
                 const pais = btn.dataset.pais;
 
-                // Si es la misma emisora y está sonando → pausar
                 if (isPlaying && emisoraActual && emisoraActual.nombre === nombre) {
                     pausar();
                     return;
                 }
 
-                // Quitar estado activo de todos
                 botonesEmisora.forEach(b => b.classList.remove('activa', 'sonando'));
-
-                // Activar este botón
                 btn.classList.add('activa');
                 btnActual = btn;
                 emisoraActual = { nombre, busqueda, pais };
@@ -213,7 +209,6 @@
 
         btnPausa.addEventListener('click', pausar);
 
-        // Eventos de audio
         audio.addEventListener('error', () => {
             if (isPlaying) {
                 isPlaying = false;
