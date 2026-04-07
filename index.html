@@ -3,94 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>esRadio Sin Cortes</title>
+    <title>Radio Pro Samsung</title>
     <style>
-        body { font-family: -apple-system, sans-serif; text-align: center; background: #121212; color: white; padding: 40px 20px; }
-        #status { color: #00ff00; margin: 25px; font-weight: bold; font-size: 1.1rem; min-height: 1.5em; }
+        body { font-family: sans-serif; text-align: center; background: #000; color: #fff; padding: 50px 20px; }
+        #status { margin: 20px; color: #00ff00; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
         button { 
-            padding: 25px; font-size: 1.4rem; border-radius: 50px; border: none; cursor: pointer; 
-            background: #00ff00; color: black; width: 100%; max-width: 320px; 
-            font-weight: bold; box-shadow: 0 4px 15px rgba(0,255,0,0.3);
-            transition: transform 0.1s;
+            padding: 25px; width: 100%; max-width: 300px; border-radius: 15px; border: none;
+            background: #1ed760; color: #000; font-size: 1.5rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 10px 20px rgba(30,215,96,0.3);
         }
-        button:active { transform: scale(0.95); }
-        .instrucciones { color: #888; font-size: 0.9rem; margin-top: 40px; line-height: 1.4; }
+        button:active { transform: scale(0.98); background: #1db954; }
     </style>
 </head>
 <body>
-    <h1>esRadio Directo</h1>
-    <div id="status">Listo para conectar</div>
-    
-    <button id="playBtn">DAR AL PLAY</button>
-
-    <div class="instrucciones">
-        Si cambias de WiFi a 4G y se corta, <br>
-        <b>espera 3 segundos</b> y volverá solo.
-    </div>
+    <h1>esRadio Sin Cortes</h1>
+    <div id="status">PULSA PARA CONECTAR</div>
+    <button id="playBtn">REPRODUCIR</button>
 
     <script>
-        // URL DIRECTA DE ESRADIO (HTTPS para evitar bloqueos)
-        const STREAM_URL = "https://stream.esradio.fm/esradio/libertaddigital.mp3/stream";
+        // URL compatible con reproductores Android/Samsung
+        const STREAM_URL = "https://stream.esradio.fm/esradio/libertaddigital.mp3";
         
-        const audio = new Audio();
+        let audio = new Audio();
         const btn = document.getElementById('playBtn');
         const status = document.getElementById('status');
 
-        let intentandoConectar = false;
-
-        function iniciarRadio() {
-            status.textContent = "Conectando con la antena...";
-            audio.src = STREAM_URL;
+        function conectar() {
+            status.textContent = "CONECTANDO...";
+            
+            // Forzamos limpieza del buffer anterior
+            audio.pause();
+            audio.src = "";
             audio.load();
             
-            audio.play()
-                .then(() => {
-                    status.textContent = "✓ EN DIRECTO";
-                    btn.textContent = "PAUSAR RADIO";
-                    btn.style.background = "#ff4444";
-                    btn.style.boxShadow = "0 4px 15px rgba(255,0,0,0.3)";
-                    intentandoConectar = false;
-                })
-                .catch(err => {
-                    console.error("Error de inicio:", err);
-                    status.textContent = "Buscando señal...";
-                    // Reintento automático si falla
-                    if(!intentandoConectar) {
-                        intentandoConectar = true;
-                        setTimeout(iniciarRadio, 3000);
-                    }
-                });
+            // Reasignamos y configuramos
+            audio.src = STREAM_URL;
+            audio.setAttribute("preload", "auto");
+            
+            audio.play().then(() => {
+                status.textContent = "• EN DIRECTO";
+                btn.textContent = "PAUSAR";
+                btn.style.background = "#ff4444";
+            }).catch(e => {
+                status.textContent = "BUSCANDO SEÑAL...";
+                console.log("Error de red, reintentando...");
+                setTimeout(conectar, 2000);
+            });
         }
 
         btn.onclick = () => {
             if (audio.paused || audio.src === "") {
-                iniciarRadio();
+                conectar();
             } else {
                 audio.pause();
-                audio.src = ""; // Cortamos el flujo para ahorrar datos
+                audio.src = "";
                 btn.textContent = "REPRODUCIR";
-                btn.style.background = "#00ff00";
-                btn.style.boxShadow = "0 4px 15px rgba(0,255,0,0.3)";
-                status.textContent = "Radio Pausada";
+                btn.style.background = "#1ed760";
+                status.textContent = "PAUSADO";
             }
         };
 
-        // LA MAGIA: Detectar cuando el audio se detiene por cambio de red
+        // Si la red cambia (WiFi -> 4G), Samsung suele lanzar 'stalled'
+        audio.addEventListener('stalled', () => {
+            status.textContent = "RECONECTANDO RED...";
+            conectar();
+        });
+
+        // Evento extra para asegurar que no se quede mudo
         audio.addEventListener('waiting', () => {
-            status.textContent = "Cambiando de red...";
-        });
-
-        audio.addEventListener('error', () => {
-            status.textContent = "Señal perdida. Reconectando...";
-            setTimeout(iniciarRadio, 2000);
-        });
-
-        // Si el móvil detecta que vuelve a tener internet
-        window.addEventListener('online', () => {
-            if (btn.textContent === "PAUSAR RADIO") {
-                status.textContent = "Red recuperada. Sincronizando...";
-                iniciarRadio();
-            }
+            status.textContent = "CARGANDO AUDIO...";
         });
     </script>
 </body>
