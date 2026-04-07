@@ -3,39 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>esRadio Pro</title>
+    <title>esRadio Pro Samsung</title>
     <link rel="apple-touch-icon" href="icono.png">
     <link rel="manifest" href="manifest.json">
     <style>
         body { font-family: sans-serif; text-align: center; background: #000; color: #fff; padding: 50px 20px; margin: 0; }
-        h1 { font-size: 1.8rem; margin-bottom: 10px; }
+        h1 { font-size: 1.6rem; margin-bottom: 5px; }
         #status { margin: 20px; color: #1ed760; font-weight: bold; font-size: 1.1rem; min-height: 1.5em; text-transform: uppercase; }
         button { 
             padding: 25px; width: 100%; max-width: 320px; border-radius: 50px; border: none;
             background: #1ed760; color: #000; font-size: 1.5rem; font-weight: bold; cursor: pointer;
-            box-shadow: 0 10px 20px rgba(30,215,96,0.3); transition: all 0.2s;
+            box-shadow: 0 10px 20px rgba(30,215,96,0.4); transition: all 0.2s;
         }
-        button:active { transform: scale(0.96); opacity: 0.9; }
-        .info { margin-top: 40px; color: #666; font-size: 0.9rem; line-height: 1.5; }
+        button:active { transform: scale(0.95); opacity: 0.8; }
+        .footer { margin-top: 50px; color: #555; font-size: 0.8rem; line-height: 1.4; }
     </style>
 </head>
 <body>
 
     <h1>esRadio Directo</h1>
-    <div id="status">LISTO PARA CONECTAR</div>
+    <div id="status">LISTO PARA REPRODUCIR</div>
     
     <button id="playBtn">DAR AL PLAY</button>
 
-    <div class="info">
-        Esta app detecta cortes de red.<br>
-        Si cambias a 4G, se reconectará sola.
+    <div class="footer">
+        Diseñada para Samsung.<br>
+        Reconexión automática al cambiar a 4G.
     </div>
 
     <script>
-        // URL CORREGIDA CON WSS (Más compatible con Samsung/Chrome)
-        const STREAM_URL = "https://wss.esradio.fm/esradio/libertaddigital.mp3";
+        // URL ESTÁNDAR (Sin WSS, directa al MP3)
+        const STREAM_URL = "https://stream.esradio.fm/esradio/libertaddigital.mp3";
         
-        let audio = new Audio();
+        const audio = new Audio();
         const btn = document.getElementById('playBtn');
         const status = document.getElementById('status');
         let isPlaying = false;
@@ -43,24 +43,22 @@
         function conectar() {
             status.textContent = "CONECTANDO...";
             
+            // Reinicio completo del motor de audio
             audio.pause();
-            audio.src = "";
+            audio.src = STREAM_URL;
             audio.load();
             
-            // Re-configuración con la URL WSS
-            audio.src = STREAM_URL;
-            audio.preload = "auto";
-            
+            // Forzar reproducción
             audio.play().then(() => {
                 status.textContent = "• EN DIRECTO";
-                btn.textContent = "PAUSAR";
+                btn.textContent = "PAUSAR RADIO";
                 btn.style.background = "#ff4444";
-                btn.style.boxShadow = "0 10px 20px rgba(255,68,68,0.3)";
+                btn.style.boxShadow = "0 10px 20px rgba(255,68,68,0.4)";
                 isPlaying = true;
-            }).catch(e => {
-                console.error("Error:", e);
-                status.textContent = "REINTENTANDO SEÑAL...";
-                // Reintento automático en 3 segundos si falla
+            }).catch(err => {
+                console.error("Error:", err);
+                status.textContent = "BUSCANDO SEÑAL...";
+                // Reintento automático cada 3 segundos
                 setTimeout(conectar, 3000);
             });
         }
@@ -70,28 +68,35 @@
                 conectar();
             } else {
                 audio.pause();
-                audio.src = "";
+                // Importante: vaciamos el src para que el móvil no siga descargando datos
+                audio.src = ""; 
                 isPlaying = false;
                 btn.textContent = "REPRODUCIR";
                 btn.style.background = "#1ed760";
-                btn.style.boxShadow = "0 10px 20px rgba(30,215,96,0.3)";
+                btn.style.boxShadow = "0 10px 20px rgba(30,215,96,0.4)";
                 status.textContent = "PAUSADO";
             }
         };
 
-        // GESTIÓN AUTOMÁTICA DE CORTES
+        // GESTIÓN DE RECONEXIÓN (WiFi a 4G)
         audio.addEventListener('error', () => {
-            if(isPlaying) {
+            if (isPlaying) {
                 status.textContent = "RECONECTANDO...";
-                setTimeout(conectar, 1000);
+                setTimeout(conectar, 1500);
             }
         });
 
+        // Si el móvil recupera internet
         window.addEventListener('online', () => {
-            if(isPlaying) {
-                status.textContent = "RECUPERANDO RED...";
+            if (isPlaying) {
+                status.textContent = "RED DETECTADA...";
                 conectar();
             }
+        });
+
+        // Si el audio se queda esperando datos
+        audio.addEventListener('waiting', () => {
+            if (isPlaying) status.textContent = "CARGANDO SEÑAL...";
         });
     </script>
 </body>
