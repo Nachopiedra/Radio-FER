@@ -3,40 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>esRadio Pro</title>
+    <title>Radio Directo</title>
     <link rel="apple-touch-icon" href="icono.png">
     <link rel="manifest" href="manifest.json">
     <style>
         * { box-sizing: border-box; }
-        body { font-family: sans-serif; text-align: center; background: #000; color: #fff; padding: 50px 20px; margin: 0; }
-        h1 { font-size: 1.6rem; margin-bottom: 5px; }
-        #status { margin: 20px; color: #1ed760; font-weight: bold; font-size: 1.1rem; min-height: 1.5em; text-transform: uppercase; }
-        button {
-            padding: 25px; width: 100%; max-width: 320px; border-radius: 50px; border: none;
-            background: #1ed760; color: #000; font-size: 1.5rem; font-weight: bold; cursor: pointer;
-            box-shadow: 0 10px 20px rgba(30,215,96,0.4); transition: all 0.2s;
+        body { font-family: sans-serif; text-align: center; background: #000; color: #fff; padding: 30px 20px; margin: 0; }
+        h1 { font-size: 1.4rem; margin-bottom: 5px; color: #aaa; }
+        #emisora-activa { font-size: 1.8rem; font-weight: bold; margin: 5px 0 15px; min-height: 2rem; }
+        #status { margin: 10px 0 20px; color: #1ed760; font-weight: bold; font-size: 1rem; min-height: 1.5em; text-transform: uppercase; }
+
+        .emisoras { display: flex; flex-direction: column; gap: 12px; max-width: 340px; margin: 0 auto 25px; }
+
+        .btn-emisora {
+            padding: 18px 20px; border-radius: 50px; border: 2px solid #333;
+            background: #111; color: #fff; font-size: 1.2rem; font-weight: bold;
+            cursor: pointer; transition: all 0.2s; text-align: left;
+            display: flex; align-items: center; justify-content: space-between;
         }
-        button:disabled { background: #444; color: #888; box-shadow: none; cursor: not-allowed; }
-        button:active { transform: scale(0.95); opacity: 0.8; }
-        .footer { margin-top: 50px; color: #555; font-size: 0.8rem; line-height: 1.4; }
+        .btn-emisora:active { transform: scale(0.97); }
+        .btn-emisora.activa { border-color: #1ed760; background: #0a2e14; color: #1ed760; }
+        .btn-emisora.activa.sonando { border-color: #ff4444; background: #2e0a0a; color: #ff4444; }
+        .btn-emisora .nombre { font-size: 1.1rem; }
+        .btn-emisora .freq { font-size: 0.8rem; color: #666; }
+        .btn-emisora.activa .freq { color: inherit; opacity: 0.7; }
+        .indicador { width: 12px; height: 12px; border-radius: 50%; background: #333; flex-shrink: 0; }
+        .btn-emisora.activa .indicador { background: #1ed760; }
+        .btn-emisora.activa.sonando .indicador { background: #ff4444; animation: pulso 1s infinite; }
+
+        @keyframes pulso {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        #btn-pausa {
+            padding: 18px; width: 100%; max-width: 340px; border-radius: 50px; border: none;
+            background: #ff4444; color: #fff; font-size: 1.3rem; font-weight: bold;
+            cursor: pointer; box-shadow: 0 8px 20px rgba(255,68,68,0.4);
+            transition: all 0.2s; display: none;
+        }
+        #btn-pausa:active { transform: scale(0.97); }
+
+        .footer { margin-top: 30px; color: #444; font-size: 0.75rem; line-height: 1.4; }
     </style>
 </head>
 <body>
 
-    <h1>esRadio Directo</h1>
-    <div id="status">LISTO PARA REPRODUCIR</div>
-    <button id="playBtn">▶ DAR AL PLAY</button>
-    <div class="footer">Diseñada para Samsung.<br>Reconexión automática al cambiar a 4G.</div>
+    <h1>Radio Directo</h1>
+    <div id="emisora-activa">—</div>
+    <div id="status">ELIGE UNA EMISORA</div>
+
+    <div class="emisoras">
+        <button class="btn-emisora" data-nombre="esRadio" data-busqueda="esradio" data-pais="ES" data-freq="99.1 FM Madrid">
+            <div>
+                <div class="nombre">esRadio</div>
+                <div class="freq">99.1 FM Madrid</div>
+            </div>
+            <div class="indicador"></div>
+        </button>
+        <button class="btn-emisora" data-nombre="COPE" data-busqueda="cope" data-pais="ES" data-freq="100.0 FM Madrid">
+            <div>
+                <div class="nombre">COPE</div>
+                <div class="freq">100.0 FM Madrid</div>
+            </div>
+            <div class="indicador"></div>
+        </button>
+        <button class="btn-emisora" data-nombre="Onda Cero" data-busqueda="onda cero" data-pais="ES" data-freq="98.0 FM Madrid">
+            <div>
+                <div class="nombre">Onda Cero</div>
+                <div class="freq">98.0 FM Madrid</div>
+            </div>
+            <div class="indicador"></div>
+        </button>
+        <button class="btn-emisora" data-nombre="Cadena SER" data-busqueda="cadena ser" data-pais="ES" data-freq="105.4 FM Madrid">
+            <div>
+                <div class="nombre">Cadena SER</div>
+                <div class="freq">105.4 FM Madrid</div>
+            </div>
+            <div class="indicador"></div>
+        </button>
+    </div>
+
+    <button id="btn-pausa">⏸ PAUSAR</button>
+
+    <div class="footer">Reconexión automática al cambiar de red.</div>
 
     <script>
-        const btn = document.getElementById('playBtn');
-        const status = document.getElementById('status');
+        const statusEl = document.getElementById('status');
+        const emisoraActivaEl = document.getElementById('emisora-activa');
+        const btnPausa = document.getElementById('btn-pausa');
+        const botonesEmisora = document.querySelectorAll('.btn-emisora');
         const audio = new Audio();
         audio.preload = "none";
 
         let isPlaying = false;
         let streamUrls = [];
         let streamIndex = 0;
+        let emisoraActual = null;
+        let btnActual = null;
 
         const RB_SERVERS = [
             'https://de1.api.radio-browser.info',
@@ -44,25 +108,22 @@
             'https://at1.api.radio-browser.info'
         ];
 
-        async function obtenerUrlStream() {
-            status.textContent = "BUSCANDO EMISORA...";
+        async function obtenerUrlStream(busqueda, pais) {
+            statusEl.textContent = "BUSCANDO EMISORA...";
             for (const server of RB_SERVERS) {
                 try {
-                    const res = await fetch(
-                        `${server}/json/stations/search?name=esradio&countrycode=ES&limit=10&hidebroken=true&order=clickcount&reverse=true`,
-                        { headers: { 'User-Agent': 'esRadioApp/1.0' } }
-                    );
+                    const url = `${server}/json/stations/search?name=${encodeURIComponent(busqueda)}&countrycode=${pais}&limit=10&hidebroken=true&order=clickcount&reverse=true`;
+                    const res = await fetch(url, { headers: { 'User-Agent': 'RadioApp/1.0' } });
                     const data = await res.json();
                     if (data && data.length > 0) {
                         const activas = data.filter(s => s.url_resolved && s.lastcheckok == 1);
                         if (activas.length > 0) {
                             streamUrls = activas.map(s => s.url_resolved);
-                            console.log("Streams encontrados:", streamUrls);
                             return true;
                         }
                     }
                 } catch (e) {
-                    console.warn("Fallo servidor RadioBrowser:", server, e);
+                    console.warn("Fallo RadioBrowser:", server, e);
                 }
             }
             return false;
@@ -70,40 +131,38 @@
 
         async function conectar() {
             if (streamUrls.length === 0) {
-                const ok = await obtenerUrlStream();
+                const ok = await obtenerUrlStream(emisoraActual.busqueda, emisoraActual.pais);
                 if (!ok) {
-                    status.textContent = "ERROR: SIN CONEXIÓN A INTERNET";
-                    btn.disabled = false;
-                    btn.textContent = "▶ REINTENTAR";
+                    statusEl.textContent = "ERROR: SIN SEÑAL";
+                    if (btnActual) btnActual.classList.remove('activa', 'sonando');
+                    btnPausa.style.display = 'none';
                     return;
                 }
                 streamIndex = 0;
             }
 
-            status.textContent = "CONECTANDO...";
+            statusEl.textContent = "CONECTANDO...";
             audio.pause();
             audio.src = streamUrls[streamIndex];
             audio.load();
 
             try {
                 await audio.play();
-                status.textContent = "● EN DIRECTO";
-                btn.textContent = "⏸ PAUSAR";
-                btn.style.background = "#ff4444";
-                btn.style.boxShadow = "0 10px 20px rgba(255,68,68,0.4)";
-                btn.disabled = false;
+                statusEl.textContent = "● EN DIRECTO";
+                emisoraActivaEl.textContent = emisoraActual.nombre;
+                if (btnActual) btnActual.classList.add('sonando');
+                btnPausa.style.display = 'block';
                 isPlaying = true;
             } catch (err) {
-                console.error("Error reproduciendo stream " + streamIndex + ":", err);
+                console.error("Error stream " + streamIndex + ":", err);
                 streamIndex++;
                 if (streamIndex < streamUrls.length) {
-                    status.textContent = "PROBANDO OTRA SEÑAL...";
+                    statusEl.textContent = "PROBANDO OTRA SEÑAL...";
                     setTimeout(conectar, 1500);
                 } else {
                     streamUrls = [];
-                    status.textContent = "RECONECTANDO...";
+                    statusEl.textContent = "RECONECTANDO...";
                     setTimeout(conectar, 3000);
-                    btn.disabled = false;
                 }
             }
         }
@@ -113,22 +172,41 @@
             audio.pause();
             audio.src = "";
             isPlaying = false;
-            btn.textContent = "▶ DAR AL PLAY";
-            btn.style.background = "#1ed760";
-            btn.style.boxShadow = "0 10px 20px rgba(30,215,96,0.4)";
-            status.textContent = "PAUSADO";
+            btnPausa.style.display = 'none';
+            if (btnActual) btnActual.classList.remove('sonando');
+            statusEl.textContent = "PAUSADO";
+            emisoraActivaEl.textContent = emisoraActual ? emisoraActual.nombre : '—';
         }
 
-        btn.onclick = () => {
-            if (!isPlaying) {
-                btn.disabled = true;
-                streamUrls = [];
-                conectar();
-            } else {
-                pausar();
-            }
-        };
+        botonesEmisora.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const nombre = btn.dataset.nombre;
+                const busqueda = btn.dataset.busqueda;
+                const pais = btn.dataset.pais;
 
+                // Si es la misma emisora y está sonando → pausar
+                if (isPlaying && emisoraActual && emisoraActual.nombre === nombre) {
+                    pausar();
+                    return;
+                }
+
+                // Quitar estado activo de todos
+                botonesEmisora.forEach(b => b.classList.remove('activa', 'sonando'));
+
+                // Activar este botón
+                btn.classList.add('activa');
+                btnActual = btn;
+                emisoraActual = { nombre, busqueda, pais };
+                streamUrls = [];
+                isPlaying = false;
+
+                conectar();
+            });
+        });
+
+        btnPausa.addEventListener('click', pausar);
+
+        // Eventos de audio
         audio.addEventListener('error', () => {
             if (isPlaying) {
                 isPlaying = false;
@@ -137,30 +215,28 @@
                     conectar();
                 } else {
                     streamUrls = [];
-                    status.textContent = "RECONECTANDO...";
+                    statusEl.textContent = "RECONECTANDO...";
                     setTimeout(conectar, 3000);
                 }
             }
         });
 
         audio.addEventListener('waiting', () => {
-            if (isPlaying) status.textContent = "CARGANDO SEÑAL...";
+            if (isPlaying) statusEl.textContent = "CARGANDO SEÑAL...";
         });
 
         audio.addEventListener('playing', () => {
-            status.textContent = "● EN DIRECTO";
+            statusEl.textContent = "● EN DIRECTO";
             isPlaying = true;
+            if (btnActual) btnActual.classList.add('sonando');
             iniciarWatchdog();
         });
 
         window.addEventListener('online', () => {
-            if (isPlaying) {
-                streamUrls = [];
-                conectar();
-            }
+            if (isPlaying) { streamUrls = []; conectar(); }
         });
 
-        // WATCHDOG: detecta audio atascado al cambiar WiFi/4G
+        // WATCHDOG
         let lastTime = 0;
         let watchdogTimer = null;
 
@@ -190,7 +266,6 @@
                 conectar();
             }
         });
-
     </script>
 </body>
 </html>
