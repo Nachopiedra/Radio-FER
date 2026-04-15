@@ -329,8 +329,7 @@
     const visualizerEl    = document.getElementById('visualizer');
     const btnTheme        = document.getElementById('btn-theme');
 
-    const audio = new Audio();
-    audio.preload = "none";
+    const audio = document.getElementById('audio-player');
 
     let isPlaying     = false;
     let streamUrls    = [];
