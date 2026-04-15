@@ -55,45 +55,27 @@
 
     <div class="emisoras">
         <button class="btn-emisora" data-nombre="esRadio" data-busqueda="esradio" data-pais="ES" data-freq="99.1 FM Madrid">
-            <div>
-                <div class="nombre">esRadio</div>
-                <div class="freq">99.1 FM Madrid</div>
-            </div>
+            <div><div class="nombre">esRadio</div><div class="freq">99.1 FM Madrid</div></div>
             <div class="indicador"></div>
         </button>
         <button class="btn-emisora" data-nombre="COPE" data-busqueda="cope" data-pais="ES" data-freq="100.0 FM Madrid">
-            <div>
-                <div class="nombre">COPE</div>
-                <div class="freq">100.0 FM Madrid</div>
-            </div>
+            <div><div class="nombre">COPE</div><div class="freq">100.0 FM Madrid</div></div>
             <div class="indicador"></div>
         </button>
         <button class="btn-emisora" data-nombre="Onda Cero" data-busqueda="onda cero" data-pais="ES" data-freq="98.0 FM Madrid">
-            <div>
-                <div class="nombre">Onda Cero</div>
-                <div class="freq">98.0 FM Madrid</div>
-            </div>
+            <div><div class="nombre">Onda Cero</div><div class="freq">98.0 FM Madrid</div></div>
             <div class="indicador"></div>
         </button>
         <button class="btn-emisora" data-nombre="Cadena SER" data-busqueda="cadena ser" data-pais="ES" data-freq="105.4 FM Madrid">
-            <div>
-                <div class="nombre">Cadena SER</div>
-                <div class="freq">105.4 FM Madrid</div>
-            </div>
+            <div><div class="nombre">Cadena SER</div><div class="freq">105.4 FM Madrid</div></div>
             <div class="indicador"></div>
         </button>
         <button class="btn-emisora" data-nombre="Cadena 100" data-busqueda="cadena 100" data-pais="ES" data-freq="99.5 FM Madrid">
-            <div>
-                <div class="nombre">Cadena 100</div>
-                <div class="freq">99.5 FM Madrid</div>
-            </div>
+            <div><div class="nombre">Cadena 100</div><div class="freq">99.5 FM Madrid</div></div>
             <div class="indicador"></div>
         </button>
         <button class="btn-emisora" data-nombre="Kiss FM" data-busqueda="kiss fm" data-pais="ES" data-freq="91.7 FM Madrid">
-            <div>
-                <div class="nombre">Kiss FM</div>
-                <div class="freq">91.7 FM Madrid</div>
-            </div>
+            <div><div class="nombre">Kiss FM</div><div class="freq">91.7 FM Madrid</div></div>
             <div class="indicador"></div>
         </button>
     </div>
@@ -115,6 +97,7 @@
         let streamIndex = 0;
         let emisoraActual = null;
         let btnActual = null;
+        let reconectando = false;
 
         const RB_SERVERS = [
             'https://de1.api.radio-browser.info',
@@ -122,6 +105,60 @@
             'https://at1.api.radio-browser.info'
         ];
 
+        // ── WAKE LOCK ──────────────────────────────────────────────────────────
+        let wakeLock = null;
+
+        async function pedirWakeLock() {
+            if (!('wakeLock' in navigator)) return;
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => { wakeLock = null; });
+            } catch (e) {
+                console.warn('Wake Lock no disponible:', e);
+            }
+        }
+
+        function liberarWakeLock() {
+            if (wakeLock) { wakeLock.release(); wakeLock = null; }
+        }
+
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible') {
+                if (isPlaying) {
+                    await pedirWakeLock();
+                    if (audio.paused || audio.ended) {
+                        console.log('Audio parado al volver a visible, reconectando...');
+                        reconectar();
+                    }
+                }
+            } else {
+                if (!isPlaying) liberarWakeLock();
+            }
+        });
+
+        // ── MEDIA SESSION ──────────────────────────────────────────────────────
+        function registrarMediaSession(nombre) {
+            if (!('mediaSession' in navigator)) return;
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: nombre,
+                artist: 'Radio FER',
+                album: 'En directo',
+                artwork: [{ src: 'icono.png', sizes: '512x512', type: 'image/png' }]
+            });
+            navigator.mediaSession.setActionHandler('play', () => {
+                if (emisoraActual) { streamUrls = []; conectar(); }
+            });
+            navigator.mediaSession.setActionHandler('pause', pausar);
+            navigator.mediaSession.setActionHandler('stop', pausar);
+            navigator.mediaSession.playbackState = 'playing';
+        }
+
+        function actualizarMediaSessionEstado(estado) {
+            if (!('mediaSession' in navigator)) return;
+            navigator.mediaSession.playbackState = estado;
+        }
+
+        // ── RADIO BROWSER ──────────────────────────────────────────────────────
         async function obtenerUrlStream(busqueda, pais) {
             statusEl.textContent = "BUSCANDO EMISORA...";
             for (const server of RB_SERVERS) {
@@ -143,7 +180,11 @@
             return false;
         }
 
+        // ── CONEXIÓN ───────────────────────────────────────────────────────────
         async function conectar() {
+            if (!emisoraActual) return;
+            reconectando = false;
+
             if (streamUrls.length === 0) {
                 const ok = await obtenerUrlStream(emisoraActual.busqueda, emisoraActual.pais);
                 if (!ok) {
@@ -156,6 +197,7 @@
             }
 
             statusEl.textContent = "CONECTANDO...";
+            pararWatchdog();
             audio.pause();
             audio.src = streamUrls[streamIndex];
             audio.load();
@@ -167,6 +209,9 @@
                 if (btnActual) btnActual.classList.add('sonando');
                 btnPausa.style.display = 'block';
                 isPlaying = true;
+                registrarMediaSession(emisoraActual.nombre);
+                await pedirWakeLock();
+                iniciarWatchdog();
             } catch (err) {
                 console.error("Error stream " + streamIndex + ":", err);
                 streamIndex++;
@@ -181,17 +226,29 @@
             }
         }
 
+        function reconectar() {
+            if (reconectando) return;
+            reconectando = true;
+            pararWatchdog();
+            streamUrls = [];
+            conectar();
+        }
+
         function pausar() {
             pararWatchdog();
+            liberarWakeLock();
             audio.pause();
             audio.src = "";
             isPlaying = false;
+            reconectando = false;
             btnPausa.style.display = 'none';
             if (btnActual) btnActual.classList.remove('sonando');
             statusEl.textContent = "PAUSADO";
             emisoraActivaEl.textContent = emisoraActual ? emisoraActual.nombre : '—';
+            actualizarMediaSessionEstado('paused');
         }
 
+        // ── BOTONES ────────────────────────────────────────────────────────────
         botonesEmisora.forEach(btn => {
             btn.addEventListener('click', () => {
                 const nombre = btn.dataset.nombre;
@@ -216,18 +273,31 @@
 
         btnPausa.addEventListener('click', pausar);
 
+        // ── EVENTOS DE AUDIO ───────────────────────────────────────────────────
         audio.addEventListener('error', () => {
-            if (isPlaying) {
-                isPlaying = false;
-                streamIndex++;
-                if (streamIndex < streamUrls.length) {
-                    conectar();
-                } else {
-                    streamUrls = [];
-                    statusEl.textContent = "RECONECTANDO...";
-                    setTimeout(conectar, 3000);
-                }
+            if (!isPlaying && !reconectando) return;
+            console.warn('audio error, intentando siguiente stream');
+            isPlaying = false;
+            streamIndex++;
+            if (streamIndex < streamUrls.length) {
+                conectar();
+            } else {
+                streamUrls = [];
+                statusEl.textContent = "RECONECTANDO...";
+                reconectando = true;
+                setTimeout(conectar, 3000);
             }
+        });
+
+        audio.addEventListener('stalled', () => {
+            if (!isPlaying) return;
+            console.warn('stalled — sin datos del stream');
+            setTimeout(() => {
+                if (isPlaying && (audio.paused || audio.readyState < 3)) {
+                    console.warn('stalled confirmado, reconectando');
+                    reconectar();
+                }
+            }, 8000);
         });
 
         audio.addEventListener('waiting', () => {
@@ -237,28 +307,40 @@
         audio.addEventListener('playing', () => {
             statusEl.textContent = "● EN DIRECTO";
             isPlaying = true;
+            reconectando = false;
             if (btnActual) btnActual.classList.add('sonando');
+            actualizarMediaSessionEstado('playing');
             iniciarWatchdog();
         });
 
-        window.addEventListener('online', () => {
-            if (isPlaying) { streamUrls = []; conectar(); }
+        audio.addEventListener('pause', () => {
+            pararWatchdog();
         });
 
-        // WATCHDOG
-        let lastTime = 0;
+        // ── RED ────────────────────────────────────────────────────────────────
+        window.addEventListener('online', () => {
+            if (isPlaying || reconectando) {
+                console.log('Red recuperada, reconectando');
+                reconectar();
+            }
+        });
+
+        // ── WATCHDOG ───────────────────────────────────────────────────────────
+        let lastTime = -1;
         let watchdogTimer = null;
 
         function iniciarWatchdog() {
-            clearInterval(watchdogTimer);
+            pararWatchdog();
+            lastTime = -1;
             watchdogTimer = setInterval(() => {
-                if (!isPlaying) return;
-                if (audio.currentTime === lastTime && !audio.paused) {
-                    console.warn("Audio atascado, reconectando...");
-                    streamUrls = [];
-                    conectar();
+                if (!isPlaying || audio.paused) return;
+                const currentTime = audio.currentTime;
+                if (lastTime >= 0 && currentTime === lastTime) {
+                    console.warn('Watchdog: audio congelado, reconectando...');
+                    reconectar();
+                    return;
                 }
-                lastTime = audio.currentTime;
+                lastTime = currentTime;
             }, 5000);
         }
 
@@ -267,14 +349,10 @@
             watchdogTimer = null;
         }
 
-        audio.addEventListener('pause', () => pararWatchdog());
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && isPlaying) {
-                streamUrls = [];
-                conectar();
-            }
-        });
+        // ── SERVICE WORKER ─────────────────────────────────────────────────────
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(console.warn);
+        }
     </script>
 </body>
 </html>
