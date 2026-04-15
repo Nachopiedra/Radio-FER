@@ -1,358 +1,712 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Radio FER</title>
     <link rel="apple-touch-icon" href="icono.png">
     <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: sans-serif; text-align: center; background: #000; color: #fff; padding: 30px 20px; margin: 0; }
-        h1 { font-size: 1.4rem; margin-bottom: 5px; color: #aaa; }
-        #emisora-activa { font-size: 1.8rem; font-weight: bold; margin: 5px 0 15px; min-height: 2rem; }
-        #status { margin: 10px 0 20px; color: #1ed760; font-weight: bold; font-size: 1rem; min-height: 1.5em; text-transform: uppercase; }
+        :root {
+            --bg: #0a0a0a;
+            --bg2: #141414;
+            --bg3: #1e1e1e;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text2: #888;
+            --text3: #444;
+            --accent: #00e676;
+            --accent-dim: rgba(0,230,118,0.1);
+            --red: #ff4444;
+            --red-dim: rgba(255,68,68,0.1);
+            --shadow-accent: 0 0 24px rgba(0,230,118,0.2);
+            --shadow-red: 0 0 24px rgba(255,68,68,0.3);
+            --radius: 16px;
+            --radius-pill: 999px;
+        }
+        [data-theme="light"] {
+            --bg: #f4f4ef;
+            --bg2: #eaeae5;
+            --bg3: #d8d8d3;
+            --border: #ccccc7;
+            --text: #111;
+            --text2: #666;
+            --text3: #bbb;
+            --accent: #007a3d;
+            --accent-dim: rgba(0,122,61,0.1);
+            --red: #cc2222;
+            --red-dim: rgba(204,34,34,0.1);
+            --shadow-accent: 0 0 20px rgba(0,122,61,0.15);
+            --shadow-red: 0 0 20px rgba(204,34,34,0.2);
+        }
 
-        .emisoras { display: flex; flex-direction: column; gap: 12px; max-width: 340px; margin: 0 auto 25px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        body {
+            font-family: 'DM Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 0 0 48px;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 24px 24px 0;
+            max-width: 420px;
+            margin: 0 auto;
+        }
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+        .logo span { color: var(--accent); }
+
+        .btn-theme {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-pill);
+            color: var(--text2);
+            cursor: pointer;
+            font-size: 1.1rem;
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .btn-theme:hover { color: var(--text); }
+
+        .status-area {
+            max-width: 420px;
+            margin: 28px auto 0;
+            padding: 0 24px;
+        }
+        #emisora-activa {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.9rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            min-height: 2.2rem;
+            line-height: 1.1;
+        }
+        #status {
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            color: var(--accent);
+            margin-top: 6px;
+            min-height: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #status.error   { color: var(--red); }
+        #status.neutral { color: var(--text2); }
+
+        .dots { display: none; gap: 3px; align-items: center; }
+        .dots.visible { display: flex; }
+        .dots span {
+            width: 4px; height: 4px; border-radius: 50%;
+            background: currentColor;
+            animation: dotBounce 1.2s infinite;
+        }
+        .dots span:nth-child(2) { animation-delay: 0.2s; }
+        .dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dotBounce {
+            0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
+            40%          { transform: scale(1);   opacity: 1;   }
+        }
+
+        .visualizer-wrap {
+            height: 38px;
+            margin-top: 14px;
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        .visualizer-wrap.visible { opacity: 1; }
+        .viz-bar {
+            flex: 1;
+            background: var(--accent);
+            border-radius: 2px 2px 0 0;
+            min-height: 3px;
+            transition: background 0.3s;
+        }
+
+        .emisoras {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 420px;
+            margin: 24px auto 0;
+            padding: 0 24px;
+        }
         .btn-emisora {
-            padding: 18px 20px; border-radius: 50px; border: 2px solid #333;
-            background: #111; color: #fff; font-size: 1.2rem; font-weight: bold;
-            cursor: pointer; transition: all 0.2s; text-align: left;
-            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 18px;
+            border-radius: var(--radius);
+            border: 1.5px solid var(--border);
+            background: var(--bg2);
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            text-align: left;
+            width: 100%;
+            opacity: 0;
+            transform: translateY(8px);
+            animation: fadeUp 0.35s forwards;
         }
-        .btn-emisora:active { transform: scale(0.97); }
-        .btn-emisora.activa { border-color: #1ed760; background: #0a2e14; color: #1ed760; }
-        .btn-emisora.activa.sonando { border-color: #ff4444; background: #2e0a0a; color: #ff4444; }
-        .btn-emisora .nombre { font-size: 1.1rem; }
-        .btn-emisora .freq { font-size: 0.8rem; color: #666; }
-        .btn-emisora.activa .freq { color: inherit; opacity: 0.7; }
-        .indicador { width: 12px; height: 12px; border-radius: 50%; background: #333; flex-shrink: 0; }
-        .btn-emisora.activa .indicador { background: #1ed760; }
-        .btn-emisora.activa.sonando .indicador { background: #ff4444; animation: pulso 1s infinite; }
+        .btn-emisora:nth-child(1) { animation-delay: 0.05s; }
+        .btn-emisora:nth-child(2) { animation-delay: 0.10s; }
+        .btn-emisora:nth-child(3) { animation-delay: 0.15s; }
+        .btn-emisora:nth-child(4) { animation-delay: 0.20s; }
+        .btn-emisora:nth-child(5) { animation-delay: 0.25s; }
+        .btn-emisora:nth-child(6) { animation-delay: 0.30s; }
+        @keyframes fadeUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .btn-emisora:active { transform: scale(0.98); }
+        .btn-emisora:hover  { border-color: var(--text3); background: var(--bg3); }
+        .btn-emisora.activa {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+            box-shadow: var(--shadow-accent);
+        }
+        .btn-emisora.activa.sonando {
+            border-color: var(--red);
+            background: var(--red-dim);
+            box-shadow: var(--shadow-red);
+        }
 
+        .emisora-logo {
+            width: 42px; height: 42px;
+            border-radius: 10px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            overflow: hidden;
+        }
+        .emisora-logo img { width: 100%; height: 100%; object-fit: contain; }
+
+        .emisora-info { flex: 1; min-width: 0; }
+        .emisora-nombre {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .emisora-freq {
+            font-size: 0.7rem;
+            color: var(--text2);
+            margin-top: 2px;
+            letter-spacing: 0.04em;
+        }
+        .btn-emisora.activa .emisora-freq         { color: var(--accent); opacity: 0.8; }
+        .btn-emisora.activa.sonando .emisora-freq { color: var(--red);    opacity: 0.8; }
+
+        .indicador {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: var(--border);
+            flex-shrink: 0;
+            transition: background 0.3s;
+        }
+        .btn-emisora.activa .indicador { background: var(--accent); }
+        .btn-emisora.activa.sonando .indicador {
+            background: var(--red);
+            animation: pulso 1s infinite;
+        }
         @keyframes pulso {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+            0%,100% { opacity: 1; }
+            50%      { opacity: 0.3; }
         }
 
+        .controls {
+            max-width: 420px;
+            margin: 20px auto 0;
+            padding: 0 24px;
+        }
         #btn-pausa {
-            padding: 18px; width: 100%; max-width: 340px; border-radius: 50px; border: none;
-            background: #ff4444; color: #fff; font-size: 1.3rem; font-weight: bold;
-            cursor: pointer; box-shadow: 0 8px 20px rgba(255,68,68,0.4);
-            transition: all 0.2s; display: none;
+            padding: 16px;
+            width: 100%;
+            border-radius: var(--radius-pill);
+            border: none;
+            background: var(--red);
+            color: #fff;
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            box-shadow: var(--shadow-red);
+            transition: all 0.2s;
+            display: none;
         }
-        #btn-pausa:active { transform: scale(0.97); }
+        #btn-pausa:active { transform: scale(0.98); }
 
-        .footer { margin-top: 30px; color: #444; font-size: 0.75rem; line-height: 1.4; }
+        .footer {
+            max-width: 420px;
+            margin: 28px auto 0;
+            padding: 0 24px;
+            color: var(--text3);
+            font-size: 0.7rem;
+            letter-spacing: 0.04em;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Radio FER</h1>
+<div class="header">
+    <div class="logo">Radio<span>FER</span></div>
+    <button class="btn-theme" id="btn-theme" title="Cambiar tema">🌙</button>
+</div>
+
+<div class="status-area">
     <div id="emisora-activa">—</div>
-    <div id="status">ELIGE UNA EMISORA</div>
-
-    <div class="emisoras">
-        <button class="btn-emisora" data-nombre="esRadio" data-busqueda="esradio" data-pais="ES" data-freq="99.1 FM Madrid">
-            <div><div class="nombre">esRadio</div><div class="freq">99.1 FM Madrid</div></div>
-            <div class="indicador"></div>
-        </button>
-        <button class="btn-emisora" data-nombre="COPE" data-busqueda="cope" data-pais="ES" data-freq="100.0 FM Madrid">
-            <div><div class="nombre">COPE</div><div class="freq">100.0 FM Madrid</div></div>
-            <div class="indicador"></div>
-        </button>
-        <button class="btn-emisora" data-nombre="Onda Cero" data-busqueda="onda cero" data-pais="ES" data-freq="98.0 FM Madrid">
-            <div><div class="nombre">Onda Cero</div><div class="freq">98.0 FM Madrid</div></div>
-            <div class="indicador"></div>
-        </button>
-        <button class="btn-emisora" data-nombre="Cadena SER" data-busqueda="cadena ser" data-pais="ES" data-freq="105.4 FM Madrid">
-            <div><div class="nombre">Cadena SER</div><div class="freq">105.4 FM Madrid</div></div>
-            <div class="indicador"></div>
-        </button>
-        <button class="btn-emisora" data-nombre="Cadena 100" data-busqueda="cadena 100" data-pais="ES" data-freq="99.5 FM Madrid">
-            <div><div class="nombre">Cadena 100</div><div class="freq">99.5 FM Madrid</div></div>
-            <div class="indicador"></div>
-        </button>
-        <button class="btn-emisora" data-nombre="Kiss FM" data-busqueda="kiss fm" data-pais="ES" data-freq="91.7 FM Madrid">
-            <div><div class="nombre">Kiss FM</div><div class="freq">91.7 FM Madrid</div></div>
-            <div class="indicador"></div>
-        </button>
+    <div id="status" class="neutral">
+        <span id="status-text">ELIGE UNA EMISORA</span>
+        <div class="dots" id="dots"><span></span><span></span><span></span></div>
     </div>
+    <div class="visualizer-wrap" id="visualizer"></div>
+</div>
 
-    <button id="btn-pausa">⏸ PAUSAR</button>
+<div class="emisoras">
+    <button class="btn-emisora" data-nombre="esRadio"    data-busqueda="esradio"    data-pais="ES" data-freq="99.1 FM · Madrid">
+        <div class="emisora-logo" id="logo-esRadio">📻</div>
+        <div class="emisora-info"><div class="emisora-nombre">esRadio</div><div class="emisora-freq">99.1 FM · Madrid</div></div>
+        <div class="indicador"></div>
+    </button>
+    <button class="btn-emisora" data-nombre="COPE"       data-busqueda="cope"       data-pais="ES" data-freq="100.0 FM · Madrid">
+        <div class="emisora-logo" id="logo-COPE">🎙️</div>
+        <div class="emisora-info"><div class="emisora-nombre">COPE</div><div class="emisora-freq">100.0 FM · Madrid</div></div>
+        <div class="indicador"></div>
+    </button>
+    <button class="btn-emisora" data-nombre="Onda Cero"  data-busqueda="onda cero"  data-pais="ES" data-freq="98.0 FM · Madrid">
+        <div class="emisora-logo" id="logo-Onda Cero">〰️</div>
+        <div class="emisora-info"><div class="emisora-nombre">Onda Cero</div><div class="emisora-freq">98.0 FM · Madrid</div></div>
+        <div class="indicador"></div>
+    </button>
+    <button class="btn-emisora" data-nombre="Cadena SER" data-busqueda="cadena ser" data-pais="ES" data-freq="105.4 FM · Madrid">
+        <div class="emisora-logo" id="logo-Cadena SER">🔵</div>
+        <div class="emisora-info"><div class="emisora-nombre">Cadena SER</div><div class="emisora-freq">105.4 FM · Madrid</div></div>
+        <div class="indicador"></div>
+    </button>
+    <button class="btn-emisora" data-nombre="Cadena 100" data-busqueda="cadena 100" data-pais="ES" data-freq="99.5 FM · Madrid">
+        <div class="emisora-logo" id="logo-Cadena 100">💯</div>
+        <div class="emisora-info"><div class="emisora-nombre">Cadena 100</div><div class="emisora-freq">99.5 FM · Madrid</div></div>
+        <div class="indicador"></div>
+    </button>
+    <button class="btn-emisora" data-nombre="Kiss FM"    data-busqueda="kiss fm"    data-pais="ES" data-freq="91.7 FM · Madrid">
+        <div class="emisora-logo" id="logo-Kiss FM">💋</div>
+        <div class="emisora-info"><div class="emisora-nombre">Kiss FM</div><div class="emisora-freq">91.7 FM · Madrid</div></div>
+        <div class="indicador"></div>
+    </button>
+</div>
 
-    <div class="footer">Reconexión automática al cambiar de red.</div>
+<div class="controls">
+    <button id="btn-pausa">⏸ &nbsp;PAUSAR</button>
+</div>
 
-    <script>
-        const statusEl = document.getElementById('status');
-        const emisoraActivaEl = document.getElementById('emisora-activa');
-        const btnPausa = document.getElementById('btn-pausa');
-        const botonesEmisora = document.querySelectorAll('.btn-emisora');
-        const audio = new Audio();
-        audio.preload = "none";
+<div class="footer">Reconexión automática · Logos vía RadioBrowser</div>
 
-        let isPlaying = false;
-        let streamUrls = [];
-        let streamIndex = 0;
-        let emisoraActual = null;
-        let btnActual = null;
-        let reconectando = false;
+<script>
+    const statusTextEl    = document.getElementById('status-text');
+    const statusEl        = document.getElementById('status');
+    const dotsEl          = document.getElementById('dots');
+    const emisoraActivaEl = document.getElementById('emisora-activa');
+    const btnPausa        = document.getElementById('btn-pausa');
+    const botonesEmisora  = document.querySelectorAll('.btn-emisora');
+    const visualizerEl    = document.getElementById('visualizer');
+    const btnTheme        = document.getElementById('btn-theme');
 
-        const RB_SERVERS = [
-            'https://de1.api.radio-browser.info',
-            'https://nl1.api.radio-browser.info',
-            'https://at1.api.radio-browser.info'
-        ];
+    const audio = new Audio();
+    audio.preload = "none";
 
-        // ── WAKE LOCK ──────────────────────────────────────────────────────────
-        let wakeLock = null;
+    let isPlaying     = false;
+    let streamUrls    = [];
+    let streamIndex   = 0;
+    let emisoraActual = null;
+    let btnActual     = null;
+    let reconectando  = false;
+    let backoffDelay  = 3000;
+    const MAX_BACKOFF = 30000;
 
-        async function pedirWakeLock() {
-            if (!('wakeLock' in navigator)) return;
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-                wakeLock.addEventListener('release', () => { wakeLock = null; });
-            } catch (e) {
-                console.warn('Wake Lock no disponible:', e);
+    // ── TEMA ─────────────────────────────────────────────────────────────────
+    const savedTheme = localStorage.getItem('rfer-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    btnTheme.textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+
+    btnTheme.addEventListener('click', () => {
+        const curr = document.documentElement.getAttribute('data-theme');
+        const next = curr === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('rfer-theme', next);
+        btnTheme.textContent = next === 'dark' ? '🌙' : '☀️';
+    });
+
+    // ── STATUS ───────────────────────────────────────────────────────────────
+    function setStatus(txt, type = 'accent', loading = false) {
+        statusTextEl.textContent = txt;
+        statusEl.className = type === 'error' ? 'error' : type === 'neutral' ? 'neutral' : '';
+        dotsEl.className   = loading ? 'dots visible' : 'dots';
+    }
+
+    // ── VISUALIZADOR ─────────────────────────────────────────────────────────
+    const NUM_BARS = 24;
+    const bars = [];
+    let audioCtx = null, analyser = null, sourceNode = null, vizRaf = null;
+
+    for (let i = 0; i < NUM_BARS; i++) {
+        const b = document.createElement('div');
+        b.className = 'viz-bar';
+        visualizerEl.appendChild(b);
+        bars.push(b);
+    }
+
+    function iniciarVisualizador() {
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (!sourceNode) {
+                sourceNode = audioCtx.createMediaElementSource(audio);
+                analyser   = audioCtx.createAnalyser();
+                analyser.fftSize = 64;
+                sourceNode.connect(analyser);
+                analyser.connect(audioCtx.destination);
             }
+            visualizerEl.classList.add('visible');
+            dibujarViz();
+        } catch(e) {
+            animarVizFallback();
         }
+    }
 
-        function liberarWakeLock() {
-            if (wakeLock) { wakeLock.release(); wakeLock = null; }
-        }
-
-        document.addEventListener('visibilitychange', async () => {
-            if (document.visibilityState === 'visible') {
-                if (isPlaying) {
-                    await pedirWakeLock();
-                    if (audio.paused || audio.ended) {
-                        console.log('Audio parado al volver a visible, reconectando...');
-                        reconectar();
-                    }
-                }
-            } else {
-                if (!isPlaying) liberarWakeLock();
-            }
+    function dibujarViz() {
+        vizRaf = requestAnimationFrame(dibujarViz);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(data);
+        bars.forEach((bar, i) => {
+            const h = Math.max(3, (data[i] / 255) * 36);
+            bar.style.height = h + 'px';
         });
+    }
 
-        // ── MEDIA SESSION ──────────────────────────────────────────────────────
-        function registrarMediaSession(nombre) {
-            if (!('mediaSession' in navigator)) return;
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: nombre,
-                artist: 'Radio FER',
-                album: 'En directo',
-                artwork: [{ src: 'icono.png', sizes: '512x512', type: 'image/png' }]
+    function animarVizFallback() {
+        visualizerEl.classList.add('visible');
+        let t = 0;
+        function frame() {
+            if (!isPlaying) return;
+            vizRaf = requestAnimationFrame(frame);
+            t += 0.08;
+            bars.forEach((bar, i) => {
+                const h = 4 + Math.abs(Math.sin(t + i * 0.4)) * 28;
+                bar.style.height = h + 'px';
             });
-            navigator.mediaSession.setActionHandler('play', () => {
-                if (emisoraActual) { streamUrls = []; conectar(); }
-            });
-            navigator.mediaSession.setActionHandler('pause', pausar);
-            navigator.mediaSession.setActionHandler('stop', pausar);
-            navigator.mediaSession.playbackState = 'playing';
         }
+        frame();
+    }
 
-        function actualizarMediaSessionEstado(estado) {
-            if (!('mediaSession' in navigator)) return;
-            navigator.mediaSession.playbackState = estado;
-        }
+    function pararVisualizador() {
+        cancelAnimationFrame(vizRaf);
+        vizRaf = null;
+        visualizerEl.classList.remove('visible');
+        bars.forEach(b => b.style.height = '3px');
+    }
 
-        // ── RADIO BROWSER ──────────────────────────────────────────────────────
-        async function obtenerUrlStream(busqueda, pais) {
-            statusEl.textContent = "BUSCANDO EMISORA...";
-            for (const server of RB_SERVERS) {
-                try {
-                    const url = `${server}/json/stations/search?name=${encodeURIComponent(busqueda)}&countrycode=${pais}&limit=10&hidebroken=true&order=clickcount&reverse=true`;
-                    const res = await fetch(url, { headers: { 'User-Agent': 'RadioApp/1.0' } });
-                    const data = await res.json();
-                    if (data && data.length > 0) {
-                        const activas = data.filter(s => s.url_resolved && s.lastcheckok == 1);
-                        if (activas.length > 0) {
-                            streamUrls = activas.map(s => s.url_resolved);
-                            return true;
-                        }
+    // ── CACHÉ localStorage ───────────────────────────────────────────────────
+    const CACHE_TTL = 60 * 60 * 1000;
+
+    function cargarCacheStream(nombre) {
+        try {
+            const raw = localStorage.getItem('rfer-stream-' + nombre);
+            if (!raw) return null;
+            const { urls, ts } = JSON.parse(raw);
+            if (Date.now() - ts > CACHE_TTL) return null;
+            return urls;
+        } catch { return null; }
+    }
+
+    function guardarCacheStream(nombre, urls) {
+        try {
+            localStorage.setItem('rfer-stream-' + nombre, JSON.stringify({ urls, ts: Date.now() }));
+        } catch {}
+    }
+
+    // ── LOGOS ────────────────────────────────────────────────────────────────
+    function aplicarLogo(nombre, favicon) {
+        if (!favicon) return;
+        const el = document.getElementById('logo-' + nombre);
+        if (!el) return;
+        const img = new Image();
+        img.src = favicon;
+        img.onload = () => { el.textContent = ''; el.appendChild(img); };
+    }
+
+    // ── RADIO BROWSER ────────────────────────────────────────────────────────
+    const RB_SERVERS = [
+        'https://de1.api.radio-browser.info',
+        'https://nl1.api.radio-browser.info',
+        'https://at1.api.radio-browser.info'
+    ];
+
+    async function obtenerUrlStream(busqueda, pais, nombre) {
+        setStatus('BUSCANDO EMISORA...', 'accent', true);
+        for (const server of RB_SERVERS) {
+            try {
+                const url  = `${server}/json/stations/search?name=${encodeURIComponent(busqueda)}&countrycode=${pais}&limit=10&hidebroken=true&order=clickcount&reverse=true`;
+                const res  = await fetch(url, { headers: { 'User-Agent': 'RadioApp/1.0' } });
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    const activas = data.filter(s => s.url_resolved && s.lastcheckok == 1);
+                    if (activas.length > 0) {
+                        streamUrls = activas.map(s => s.url_resolved);
+                        guardarCacheStream(nombre, streamUrls);
+                        const conFavicon = activas.find(s => s.favicon);
+                        if (conFavicon) aplicarLogo(nombre, conFavicon.favicon);
+                        return true;
                     }
-                } catch (e) {
-                    console.warn("Fallo RadioBrowser:", server, e);
                 }
-            }
-            return false;
+            } catch (e) { console.warn("Fallo RadioBrowser:", server, e); }
         }
+        return false;
+    }
 
-        // ── CONEXIÓN ───────────────────────────────────────────────────────────
-        async function conectar() {
-            if (!emisoraActual) return;
-            reconectando = false;
+    // ── WAKE LOCK ────────────────────────────────────────────────────────────
+    let wakeLock = null;
 
-            if (streamUrls.length === 0) {
-                const ok = await obtenerUrlStream(emisoraActual.busqueda, emisoraActual.pais);
+    async function pedirWakeLock() {
+        if (!('wakeLock' in navigator)) return;
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => { wakeLock = null; });
+        } catch (e) { console.warn('Wake Lock:', e); }
+    }
+
+    function liberarWakeLock() {
+        if (wakeLock) { wakeLock.release(); wakeLock = null; }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible') {
+            if (isPlaying) {
+                await pedirWakeLock();
+                if (audio.paused || audio.ended) reconectar();
+            }
+        } else {
+            if (!isPlaying) liberarWakeLock();
+        }
+    });
+
+    // ── MEDIA SESSION ────────────────────────────────────────────────────────
+    function registrarMediaSession(nombre) {
+        if (!('mediaSession' in navigator)) return;
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: nombre, artist: 'Radio FER', album: 'En directo',
+            artwork: [{ src: 'icono.png', sizes: '512x512', type: 'image/png' }]
+        });
+        navigator.mediaSession.setActionHandler('play',  () => { if (emisoraActual) { streamUrls = []; conectar(); } });
+        navigator.mediaSession.setActionHandler('pause', pausar);
+        navigator.mediaSession.setActionHandler('stop',  pausar);
+        navigator.mediaSession.playbackState = 'playing';
+    }
+
+    function actualizarMediaSessionEstado(e) {
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = e;
+    }
+
+    // ── CONEXIÓN ─────────────────────────────────────────────────────────────
+    async function conectar() {
+        if (!emisoraActual) return;
+        reconectando = false;
+
+        if (streamUrls.length === 0) {
+            const cached = cargarCacheStream(emisoraActual.nombre);
+            if (cached && cached.length > 0) {
+                streamUrls  = cached;
+                streamIndex = 0;
+            } else {
+                const ok = await obtenerUrlStream(emisoraActual.busqueda, emisoraActual.pais, emisoraActual.nombre);
                 if (!ok) {
-                    statusEl.textContent = "ERROR: SIN SEÑAL";
+                    setStatus('SIN SEÑAL', 'error');
                     if (btnActual) btnActual.classList.remove('activa', 'sonando');
                     btnPausa.style.display = 'none';
                     return;
                 }
                 streamIndex = 0;
             }
-
-            statusEl.textContent = "CONECTANDO...";
-            pararWatchdog();
-            audio.pause();
-            audio.src = streamUrls[streamIndex];
-            audio.load();
-
-            try {
-                await audio.play();
-                statusEl.textContent = "● EN DIRECTO";
-                emisoraActivaEl.textContent = emisoraActual.nombre;
-                if (btnActual) btnActual.classList.add('sonando');
-                btnPausa.style.display = 'block';
-                isPlaying = true;
-                registrarMediaSession(emisoraActual.nombre);
-                await pedirWakeLock();
-                iniciarWatchdog();
-            } catch (err) {
-                console.error("Error stream " + streamIndex + ":", err);
-                streamIndex++;
-                if (streamIndex < streamUrls.length) {
-                    statusEl.textContent = "PROBANDO OTRA SEÑAL...";
-                    setTimeout(conectar, 1500);
-                } else {
-                    streamUrls = [];
-                    statusEl.textContent = "RECONECTANDO...";
-                    setTimeout(conectar, 3000);
-                }
-            }
         }
 
-        function reconectar() {
-            if (reconectando) return;
-            reconectando = true;
-            pararWatchdog();
-            streamUrls = [];
-            conectar();
-        }
+        setStatus('CONECTANDO...', 'accent', true);
+        pararWatchdog();
+        audio.pause();
+        audio.src = streamUrls[streamIndex];
+        audio.load();
 
-        function pausar() {
-            pararWatchdog();
-            liberarWakeLock();
-            audio.pause();
-            audio.src = "";
-            isPlaying = false;
-            reconectando = false;
-            btnPausa.style.display = 'none';
-            if (btnActual) btnActual.classList.remove('sonando');
-            statusEl.textContent = "PAUSADO";
-            emisoraActivaEl.textContent = emisoraActual ? emisoraActual.nombre : '—';
-            actualizarMediaSessionEstado('paused');
-        }
+        let timeoutId = setTimeout(() => {
+            if (!isPlaying) { audio.pause(); siguienteStream(); }
+        }, 12000);
 
-        // ── BOTONES ────────────────────────────────────────────────────────────
-        botonesEmisora.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const nombre = btn.dataset.nombre;
-                const busqueda = btn.dataset.busqueda;
-                const pais = btn.dataset.pais;
-
-                if (isPlaying && emisoraActual && emisoraActual.nombre === nombre) {
-                    pausar();
-                    return;
-                }
-
-                botonesEmisora.forEach(b => b.classList.remove('activa', 'sonando'));
-                btn.classList.add('activa');
-                btnActual = btn;
-                emisoraActual = { nombre, busqueda, pais };
-                streamUrls = [];
-                isPlaying = false;
-
-                conectar();
-            });
-        });
-
-        btnPausa.addEventListener('click', pausar);
-
-        // ── EVENTOS DE AUDIO ───────────────────────────────────────────────────
-        audio.addEventListener('error', () => {
-            if (!isPlaying && !reconectando) return;
-            console.warn('audio error, intentando siguiente stream');
-            isPlaying = false;
-            streamIndex++;
-            if (streamIndex < streamUrls.length) {
-                conectar();
-            } else {
-                streamUrls = [];
-                statusEl.textContent = "RECONECTANDO...";
-                reconectando = true;
-                setTimeout(conectar, 3000);
-            }
-        });
-
-        audio.addEventListener('stalled', () => {
-            if (!isPlaying) return;
-            console.warn('stalled — sin datos del stream');
-            setTimeout(() => {
-                if (isPlaying && (audio.paused || audio.readyState < 3)) {
-                    console.warn('stalled confirmado, reconectando');
-                    reconectar();
-                }
-            }, 8000);
-        });
-
-        audio.addEventListener('waiting', () => {
-            if (isPlaying) statusEl.textContent = "CARGANDO SEÑAL...";
-        });
-
-        audio.addEventListener('playing', () => {
-            statusEl.textContent = "● EN DIRECTO";
-            isPlaying = true;
-            reconectando = false;
+        try {
+            await audio.play();
+            clearTimeout(timeoutId);
+            backoffDelay = 3000;
+            setStatus('● EN DIRECTO', 'accent');
+            emisoraActivaEl.textContent = emisoraActual.nombre;
             if (btnActual) btnActual.classList.add('sonando');
-            actualizarMediaSessionEstado('playing');
+            btnPausa.style.display = 'block';
+            isPlaying = true;
+            registrarMediaSession(emisoraActual.nombre);
+            await pedirWakeLock();
             iniciarWatchdog();
-        });
-
-        audio.addEventListener('pause', () => {
-            pararWatchdog();
-        });
-
-        // ── RED ────────────────────────────────────────────────────────────────
-        window.addEventListener('online', () => {
-            if (isPlaying || reconectando) {
-                console.log('Red recuperada, reconectando');
-                reconectar();
-            }
-        });
-
-        // ── WATCHDOG ───────────────────────────────────────────────────────────
-        let lastTime = -1;
-        let watchdogTimer = null;
-
-        function iniciarWatchdog() {
-            pararWatchdog();
-            lastTime = -1;
-            watchdogTimer = setInterval(() => {
-                if (!isPlaying || audio.paused) return;
-                const currentTime = audio.currentTime;
-                if (lastTime >= 0 && currentTime === lastTime) {
-                    console.warn('Watchdog: audio congelado, reconectando...');
-                    reconectar();
-                    return;
-                }
-                lastTime = currentTime;
-            }, 5000);
+            iniciarVisualizador();
+        } catch (err) {
+            clearTimeout(timeoutId);
+            console.error("Error stream " + streamIndex + ":", err);
+            siguienteStream();
         }
+    }
 
-        function pararWatchdog() {
-            clearInterval(watchdogTimer);
-            watchdogTimer = null;
+    function siguienteStream() {
+        streamIndex++;
+        if (streamIndex < streamUrls.length) {
+            setStatus('PROBANDO OTRA SEÑAL...', 'accent', true);
+            setTimeout(conectar, 1500);
+        } else {
+            streamUrls = [];
+            backoffDelay = Math.min(backoffDelay * 2, MAX_BACKOFF);
+            setStatus(`REINTENTO EN ${backoffDelay / 1000}s...`, 'neutral', true);
+            reconectando = true;
+            setTimeout(conectar, backoffDelay);
         }
+    }
 
-        // ── SERVICE WORKER ─────────────────────────────────────────────────────
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js').catch(console.warn);
-        }
-    </script>
+    function reconectar() {
+        if (reconectando) return;
+        reconectando = true;
+        pararWatchdog();
+        pararVisualizador();
+        streamUrls = [];
+        conectar();
+    }
+
+    function pausar() {
+        pararWatchdog();
+        pararVisualizador();
+        liberarWakeLock();
+        audio.pause();
+        audio.src     = "";
+        isPlaying     = false;
+        reconectando  = false;
+        backoffDelay  = 3000;
+        btnPausa.style.display = 'none';
+        if (btnActual) btnActual.classList.remove('sonando');
+        setStatus('PAUSADO', 'neutral');
+        emisoraActivaEl.textContent = emisoraActual ? emisoraActual.nombre : '—';
+        actualizarMediaSessionEstado('paused');
+    }
+
+    // ── BOTONES ──────────────────────────────────────────────────────────────
+    botonesEmisora.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const nombre   = btn.dataset.nombre;
+            const busqueda = btn.dataset.busqueda;
+            const pais     = btn.dataset.pais;
+
+            if (isPlaying && emisoraActual && emisoraActual.nombre === nombre) { pausar(); return; }
+
+            botonesEmisora.forEach(b => b.classList.remove('activa', 'sonando'));
+            btn.classList.add('activa');
+            btnActual     = btn;
+            emisoraActual = { nombre, busqueda, pais };
+            streamUrls    = [];
+            isPlaying     = false;
+            backoffDelay  = 3000;
+            pararVisualizador();
+            conectar();
+        });
+    });
+
+    btnPausa.addEventListener('click', pausar);
+
+    // ── EVENTOS AUDIO ────────────────────────────────────────────────────────
+    audio.addEventListener('error', () => {
+        if (!isPlaying && !reconectando) return;
+        isPlaying = false;
+        pararVisualizador();
+        siguienteStream();
+    });
+
+    audio.addEventListener('stalled', () => {
+        if (!isPlaying) return;
+        setTimeout(() => {
+            if (isPlaying && (audio.paused || audio.readyState < 3)) reconectar();
+        }, 8000);
+    });
+
+    audio.addEventListener('waiting', () => {
+        if (isPlaying) setStatus('CARGANDO SEÑAL...', 'accent', true);
+    });
+
+    audio.addEventListener('playing', () => {
+        setStatus('● EN DIRECTO', 'accent');
+        isPlaying    = true;
+        reconectando = false;
+        backoffDelay = 3000;
+        if (btnActual) btnActual.classList.add('sonando');
+        actualizarMediaSessionEstado('playing');
+        iniciarWatchdog();
+        if (!vizRaf) iniciarVisualizador();
+    });
+
+    audio.addEventListener('pause', () => pararWatchdog());
+
+    // ── RED ──────────────────────────────────────────────────────────────────
+    window.addEventListener('online', () => {
+        if (isPlaying || reconectando) reconectar();
+    });
+
+    // ── WATCHDOG ─────────────────────────────────────────────────────────────
+    let lastTime = -1, watchdogTimer = null;
+
+    function iniciarWatchdog() {
+        pararWatchdog();
+        lastTime = -1;
+        watchdogTimer = setInterval(() => {
+            if (!isPlaying || audio.paused) return;
+            const t = audio.currentTime;
+            if (lastTime >= 0 && t === lastTime) { reconectar(); return; }
+            lastTime = t;
+        }, 5000);
+    }
+
+    function pararWatchdog() { clearInterval(watchdogTimer); watchdogTimer = null; }
+
+    // ── SERVICE WORKER ────────────────────────────────────────────────────────
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+            reg.update();
+            reg.addEventListener('updatefound', () => {
+                const nw = reg.installing;
+                nw.addEventListener('statechange', () => {
+                    if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                        nw.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                });
+            });
+        }).catch(console.warn);
+
+        navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    }
+</script>
 </body>
 </html>
