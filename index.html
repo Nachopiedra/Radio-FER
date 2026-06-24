@@ -453,29 +453,42 @@
         'https://at1.api.radio-browser.info'
     ];
 
+    async function buscarEnRB(termino, pais, nombre) {
+        for (const server of RB_SERVERS) {
+            try {
+                const filtroPais = pais ? `&countrycode=${pais}` : '';
+                const url  = `${server}/json/stations/search?name=${encodeURIComponent(termino)}${filtroPais}&limit=10&hidebroken=true&order=clickcount&reverse=true`;
+                const res  = await fetch(url, { headers: { 'User-Agent': 'RadioApp/1.0' } });
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    const activas = data.filter(s => s.url_resolved && s.lastcheckok == 1);
+                    if (activas.length > 0) {
+                        streamUrls = activas.map(s => s.url_resolved);
+                        guardarCacheStream(nombre, streamUrls);
+                        const conFavicon = activas.find(s => s.favicon);
+                        if (conFavicon) aplicarLogo(nombre, conFavicon.favicon);
+                        return true;
+                    }
+                }
+            } catch (e) { console.warn("Fallo RadioBrowser:", server, termino, e); }
+        }
+        return false;
+    }
+
     async function obtenerUrlStream(busquedaRaw, pais, nombre) {
         setStatus('BUSCANDO EMISORA...', 'accent', true);
         // Permite varios términos de respaldo separados por "|" (ej: "cope deportes|cope dxt")
         const terminos = busquedaRaw.split('|').map(t => t.trim()).filter(Boolean);
+
+        // 1) Intenta cada término restringido al país (más preciso)
         for (const termino of terminos) {
-            for (const server of RB_SERVERS) {
-                try {
-                    const url  = `${server}/json/stations/search?name=${encodeURIComponent(termino)}&countrycode=${pais}&limit=10&hidebroken=true&order=clickcount&reverse=true`;
-                    const res  = await fetch(url, { headers: { 'User-Agent': 'RadioApp/1.0' } });
-                    const data = await res.json();
-                    if (data && data.length > 0) {
-                        const activas = data.filter(s => s.url_resolved && s.lastcheckok == 1);
-                        if (activas.length > 0) {
-                            streamUrls = activas.map(s => s.url_resolved);
-                            guardarCacheStream(nombre, streamUrls);
-                            const conFavicon = activas.find(s => s.favicon);
-                            if (conFavicon) aplicarLogo(nombre, conFavicon.favicon);
-                            return true;
-                        }
-                    }
-                } catch (e) { console.warn("Fallo RadioBrowser:", server, termino, e); }
-            }
+            if (await buscarEnRB(termino, pais, nombre)) return true;
         }
+
+        // 2) Red de seguridad: repite el primer término SIN filtro de país,
+        //    por si la emisora está mal etiquetada en RadioBrowser
+        if (await buscarEnRB(terminos[0], null, nombre)) return true;
+
         return false;
     }
 
