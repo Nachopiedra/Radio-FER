@@ -171,6 +171,7 @@
         .btn-emisora:nth-child(4) { animation-delay: 0.20s; }
         .btn-emisora:nth-child(5) { animation-delay: 0.25s; }
         .btn-emisora:nth-child(6) { animation-delay: 0.30s; }
+        .btn-emisora:nth-child(7) { animation-delay: 0.35s; }
         @keyframes fadeUp {
             to { opacity: 1; transform: translateY(0); }
         }
@@ -290,6 +291,11 @@
     <button class="btn-emisora" data-nombre="COPE"       data-busqueda="cope"       data-pais="ES" data-freq="100.0 FM · Madrid">
         <div class="emisora-logo" id="logo-COPE">🎙️</div>
         <div class="emisora-info"><div class="emisora-nombre">COPE</div><div class="emisora-freq">100.0 FM · Madrid</div></div>
+        <div class="indicador"></div>
+    </button>
+    <button class="btn-emisora" data-nombre="COPE Deportes" data-busqueda="cope deportes|cope dxt|tiempo de juego|el partidazo" data-pais="ES" data-freq="101.8 FM · Madrid">
+        <div class="emisora-logo" id="logo-COPE Deportes">⚽</div>
+        <div class="emisora-info"><div class="emisora-nombre">COPE Deportes</div><div class="emisora-freq">101.8 FM · Madrid</div></div>
         <div class="indicador"></div>
     </button>
     <button class="btn-emisora" data-nombre="Onda Cero"  data-busqueda="onda cero"  data-pais="ES" data-freq="98.0 FM · Madrid">
@@ -447,24 +453,28 @@
         'https://at1.api.radio-browser.info'
     ];
 
-    async function obtenerUrlStream(busqueda, pais, nombre) {
+    async function obtenerUrlStream(busquedaRaw, pais, nombre) {
         setStatus('BUSCANDO EMISORA...', 'accent', true);
-        for (const server of RB_SERVERS) {
-            try {
-                const url  = `${server}/json/stations/search?name=${encodeURIComponent(busqueda)}&countrycode=${pais}&limit=10&hidebroken=true&order=clickcount&reverse=true`;
-                const res  = await fetch(url, { headers: { 'User-Agent': 'RadioApp/1.0' } });
-                const data = await res.json();
-                if (data && data.length > 0) {
-                    const activas = data.filter(s => s.url_resolved && s.lastcheckok == 1);
-                    if (activas.length > 0) {
-                        streamUrls = activas.map(s => s.url_resolved);
-                        guardarCacheStream(nombre, streamUrls);
-                        const conFavicon = activas.find(s => s.favicon);
-                        if (conFavicon) aplicarLogo(nombre, conFavicon.favicon);
-                        return true;
+        // Permite varios términos de respaldo separados por "|" (ej: "cope deportes|cope dxt")
+        const terminos = busquedaRaw.split('|').map(t => t.trim()).filter(Boolean);
+        for (const termino of terminos) {
+            for (const server of RB_SERVERS) {
+                try {
+                    const url  = `${server}/json/stations/search?name=${encodeURIComponent(termino)}&countrycode=${pais}&limit=10&hidebroken=true&order=clickcount&reverse=true`;
+                    const res  = await fetch(url, { headers: { 'User-Agent': 'RadioApp/1.0' } });
+                    const data = await res.json();
+                    if (data && data.length > 0) {
+                        const activas = data.filter(s => s.url_resolved && s.lastcheckok == 1);
+                        if (activas.length > 0) {
+                            streamUrls = activas.map(s => s.url_resolved);
+                            guardarCacheStream(nombre, streamUrls);
+                            const conFavicon = activas.find(s => s.favicon);
+                            if (conFavicon) aplicarLogo(nombre, conFavicon.favicon);
+                            return true;
+                        }
                     }
-                }
-            } catch (e) { console.warn("Fallo RadioBrowser:", server, e); }
+                } catch (e) { console.warn("Fallo RadioBrowser:", server, termino, e); }
+            }
         }
         return false;
     }
@@ -698,5 +708,4 @@
 </script>
 
 </body>
-<audio id="audio-player" preload="none" playsinline></audio>
 </html>
